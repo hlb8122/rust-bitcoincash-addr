@@ -1,0 +1,12 @@
+[package]
+name = "bitcoincash-addr"
+version = "0.1.0"
+authors = ["Harry L. Barber <hlbarber93@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+rust-base58 = "*"
+bitcoin_hashes = "*"
+
+[dev-dependencies]
+hex = "*"
