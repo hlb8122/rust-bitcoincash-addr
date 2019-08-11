@@ -62,6 +62,8 @@ pub enum HashType {
     Script,
 }
 
+/// Struct containing address bytes and metadata required to encode an address 
+/// string and yielded via decoding.
 #[derive(PartialEq, Clone)]
 pub struct Address {
     /// Address bytes
@@ -74,6 +76,8 @@ pub struct Address {
     pub network: Network,
 }
 
+/// Creates an empty `Address` struct, with the `body` bytes the empty vector, 
+/// `Scheme::CashAddr`, `HashType::Key`, and `Network::Main`.
 impl Default for Address {
     fn default() -> Self {
         Address {
