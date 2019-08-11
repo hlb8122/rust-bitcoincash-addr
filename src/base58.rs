@@ -3,6 +3,7 @@ use rust_base58::base58::{FromBase58, ToBase58};
 
 use crate::*;
 
+/// Codec allowing the encoding and decoding of base58 addresses
 pub struct Base58Codec;
 
 impl AddressCodec for Base58Codec {

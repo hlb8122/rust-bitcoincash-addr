@@ -5,7 +5,10 @@ const MAINNET_PREFIX: &str = "bitcoincash";
 const TESTNET_PREFIX: &str = "bchtest";
 const REGNET_PREFIX: &str = "bchreg";
 
+// The cashaddr character set for encoding
 const CHARSET: &[u8; 32] = b"qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+
+// The cashaddr character set for decoding
 const CHARSET_REV: [i8; 128] = [
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -15,6 +18,7 @@ const CHARSET_REV: [i8; 128] = [
     -1, -1, -1, -1,
 ];
 
+// Version byte flags
 #[allow(dead_code)]
 mod version_byte_flags {
     pub const TYPE_MASK: u8 = 0x78;
@@ -32,7 +36,7 @@ mod version_byte_flags {
     pub const SIZE_512: u8 = 0x07;
 }
 
-
+// https://github.com/Bitcoin-ABC/bitcoin-abc/blob/2804a49bfc0764ba02ce2999809c52b3b9bb501e/src/cashaddr.cpp#L42
 fn polymod(v: &[u8]) -> u64 {
     let mut c: u64 = 1;
     for d in v.iter() {
@@ -57,10 +61,12 @@ fn polymod(v: &[u8]) -> u64 {
     c ^ 1
 }
 
+// Verify a checksum
 fn verify_checksum(prefix: &str, payload: &[u8]) -> bool {
     polymod(&[&expand_prefix(prefix), payload].concat()) == 0
 }
 
+// Expand the address prefix for the checksum operation
 fn expand_prefix(prefix: &str) -> Vec<u8> {
     let mut ret: Vec<u8> = prefix.chars().map(|c| (c as u8) & 0x1f).collect();
     ret.push(0);
@@ -76,19 +82,19 @@ fn convert_bits(data: &[u8], inbits: u8, outbits: u8, pad: bool) -> Vec<u8> {
     let groupmask = (1 << outbits) - 1;
     for d in data.iter() {
         // We push each input chunk into a 16-bit accumulator
-        acc = (acc << inbits) | (*d as u16);
+        acc = (acc << inbits) | u16::from(*d);
         num += inbits;
         // Then we extract all the output groups we can
         while num > outbits {
-            ret.push((acc >> num - outbits) as u8);
-            acc = acc & !(groupmask << num - outbits);
-            num = num - outbits;
+            ret.push((acc >> (num - outbits)) as u8);
+            acc &= !(groupmask << (num - outbits));
+            num -= outbits;
         }
     }
     if pad {
         // If there's some bits left, pad and add it
         if num > 0 {
-            ret.push((acc << outbits - num) as u8);
+            ret.push((acc << (outbits - num)) as u8);
         }
     } else {
         // If there's some bits left, figure out if we need to remove padding and add it
@@ -100,10 +106,12 @@ fn convert_bits(data: &[u8], inbits: u8, outbits: u8, pad: bool) -> Vec<u8> {
     ret
 }
 
+/// Codec allowing the encoding and decoding of cashaddrs
 pub struct CashAddrCodec;
 
 impl AddressCodec for CashAddrCodec {
     fn encode(raw: &[u8], hash_type: HashType, network: Network) -> Result<String, AddressError> {
+        // Calculate version byte
         let hash_flag = match hash_type {
             HashType::Key => version_byte_flags::TYPE_P2PKH,
             HashType::Script => version_byte_flags::TYPE_P2SH,
@@ -127,49 +135,50 @@ impl AddressCodec for CashAddrCodec {
             Network::Regtest => REGNET_PREFIX,
         };
 
-        // Generate the payload used both for calculating the checkum and the resulting address
-        // It consists of a single version byte and the data to encode (pubkey hash) in 5-bit chunks
+        // Convert payload to 5 bit array
         let mut payload = Vec::with_capacity(1 + raw.len());
         payload.push(version_byte);
         payload.extend(raw);
         let payload_5_bits = convert_bits(&payload, 8, 5, true);
 
-        // Encode the rest of the cashaddr string (payload and checksum)
+        // Construct payload string using CHARSET
         let payload_str: String = payload_5_bits
             .iter()
-            .map(|b| {
-                CHARSET[*b as usize] as char
-            })
+            .map(|b| CHARSET[*b as usize] as char)
             .collect();
 
-        // Generate the 40-bit checksum
-        // The prefix used in the checksum calculation is the string prefix's lower 5 bits of each character.
+        // Create checksum
         let expanded_prefix = expand_prefix(prefix);
         let checksum_input = [&expanded_prefix[..], &payload_5_bits, &[0; 8][..]].concat();
         let checksum = polymod(&checksum_input);
+
+        // Convert checksum to string
         let checksum_str: String = (0..8)
             .rev()
             .map(|i| CHARSET[((checksum >> (i * 5)) & 31) as usize] as char)
             .collect();
 
+        // Concatentate all parts
         let cashaddr = [prefix, ":", &payload_str, &checksum_str].concat();
         Ok(cashaddr)
     }
 
     fn decode(addr_str: &str) -> Result<Address, AddressError> {
-        // Extract prefix
+        // Delimit and extract prefix
         let parts: Vec<&str> = addr_str.split(':').collect();
         if parts.len() != 2 {
             return Err(CashAddrError::NoPrefix.into());
         }
-        let network = match parts[0] {
+        let prefix = parts[0];
+        let payload_str = parts[1];
+
+        // Match network
+        let network = match prefix {
             MAINNET_PREFIX => Network::Main,
             TESTNET_PREFIX => Network::Test,
             REGNET_PREFIX => Network::Regtest,
             _ => return Err(CashAddrError::InvalidPrefix.into()),
         };
-        let prefix = parts[0];
-        let payload_str = parts[1];
 
         // Do some sanity checks on the string
         let mut payload_chars = payload_str.chars();
@@ -178,48 +187,45 @@ impl AddressCodec for CashAddrCodec {
                 if payload_chars.any(|c| c.is_uppercase()) {
                     return Err(CashAddrError::MixedCase.into());
                 }
-            } else {
-                if payload_chars.any(|c| c.is_lowercase()) {
-                    return Err(CashAddrError::MixedCase.into());
-                }
+            } else if payload_chars.any(|c| c.is_lowercase()) {
+                return Err(CashAddrError::MixedCase.into());
             }
         } else {
             return Err(CashAddrError::InvalidLength.into());
         }
 
-        let payload_chars = payload_str.chars();
+        // Decode payload to 5 bit array
+        let payload_chars = payload_str.chars(); // Reintialize iterator here
         let payload_5_bits: Result<Vec<u8>, CashAddrError> = payload_chars
             .map(|c| {
                 let i = c as usize;
                 if let Some(d) = CHARSET_REV.get(i) {
                     if *d == -1 {
-                        return Err(CashAddrError::InvalidChar.into());
+                        return Err(CashAddrError::InvalidChar);
                     }
                     Ok(*d as u8)
                 } else {
-                    return Err(CashAddrError::InvalidChar.into());
+                    return Err(CashAddrError::InvalidChar);
                 }
             })
             .collect();
         let payload_5_bits = payload_5_bits?;
 
-        println!("{:?}", payload_5_bits);
-
         // Verify the checksum
         if !verify_checksum(&prefix, &payload_5_bits) {
-            return Err(CashAddrError::InvalidChecksum.into());
+            return Err(CashAddrError::ChecksumFailed.into());
         }
 
-        // Convert from 5 bits
+        // Convert from 5 bit array to byte array
         let len_5_bit = payload_5_bits.len();
-        let payload = convert_bits(&payload_5_bits[..(len_5_bit-8)], 5, 8, false);
+        let payload = convert_bits(&payload_5_bits[..(len_5_bit - 8)], 5, 8, false);
 
         // Verify the version byte
         let version = payload[0];
-        let body = &payload[1..];
-        let body_len = body.len();
 
         // Check length
+        let body = &payload[1..];
+        let body_len = body.len();
         let version_size = version & version_byte_flags::SIZE_MASK;
         if (version_size == version_byte_flags::SIZE_160 && body_len != 20)
             || (version_size == version_byte_flags::SIZE_192 && body_len != 24)
@@ -233,7 +239,7 @@ impl AddressCodec for CashAddrCodec {
             return Err(CashAddrError::InvalidLength.into());
         }
 
-        // Extract the address type and return
+        // Extract the hash type and return
         let version_type = version & version_byte_flags::TYPE_MASK;
         let hash_type = if version_type == version_byte_flags::TYPE_P2PKH {
             HashType::Key
@@ -340,11 +346,7 @@ mod tests {
     fn verify(network: Network, data: &Vec<u8>, cashaddr: &str) {
         let hash_type = HashType::Key;
         let output = CashAddrCodec::encode(data, hash_type, network).unwrap();
-        assert!(
-            output
-                == cashaddr.to_ascii_lowercase()
-        );
-        println!("Got here{}", output);
+        assert!(output == cashaddr.to_ascii_lowercase());
         let decoded = CashAddrCodec::decode(cashaddr).unwrap();
         assert!(decoded.as_ref().to_vec() == *data);
     }
