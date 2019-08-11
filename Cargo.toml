@@ -17,8 +17,8 @@ exclude = ["/.travis.yml"]
 travis-ci = { repository = "hlb8122/rust-bitcoincash-addr" }
 
 [dependencies]
-rust-base58 = "*"
-bitcoin_hashes = "*"
+rust-base58 = "0.0.4"
+bitcoin_hashes = "0.7.0"
 
 [dev-dependencies]
-hex = "*"
+hex = "0.3.2"
