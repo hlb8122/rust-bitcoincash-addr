@@ -47,7 +47,7 @@ impl AddressCodec for Base58Codec {
         let checksum_actual = &raw[raw.len() - 4..];
         let checksum_expected = Sha256d::hash(payload);
         if &checksum_expected[0..4] != checksum_actual {
-            return Err(Base58Error::InvalidChecksum.into());
+            return Err(Base58Error::ChecksumFailed.into());
         }
 
         // Extract hash160 address and return

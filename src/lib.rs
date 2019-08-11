@@ -1,3 +1,30 @@
+//! # Bitcoin Cash Address Library
+//!
+//! A simple library providing an `Address` struct enabling 
+//! encoding/decoding of Bitcoin Cash addresses.
+//! 
+//! ```
+//! use bitcoincash_addr::{Address, Network, Scheme};
+//! 
+//! fn main() {
+//!     // Decode base 58 address
+//!     let legacy_addr = "1NM2HFXin4cEQRBLjkNZAS98qLX9JKzjKn";
+//!     let mut addr = Address::decode(legacy_addr).unwrap();
+//! 
+//!     // Change the base 58 address to a test network cashaddr
+//!     addr.network = Network::Test;
+//!     addr.scheme = Scheme::CashAddr;
+//! 
+//!     // Encode cashaddr
+//!     let cash_addr = addr.encode().unwrap();
+//! 
+//!     // bchtest:qr4zgpuznfg923ntyauyeh5v7333v72xhum2dsdgfh
+//!     println!("{}", cash_addr);
+//! }
+//! 
+//! ```
+//! 
+
 mod base58;
 mod cashaddr;
 mod errors;
@@ -102,7 +129,8 @@ impl Address {
     }
 }
 
-/// A codec encoding and decoding the `Address` struct
+/// A trait providing an interface for encoding and decoding the `Address` struct
+/// for each address scheme.
 pub trait AddressCodec {
     /// Attempt to convert the raw address bytes to a string
     fn encode(raw: &[u8], hash_type: HashType, network: Network) -> Result<String, AddressError>;
