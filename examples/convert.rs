@@ -9,9 +9,9 @@ fn main() {
     addr.network = Network::Test;
     addr.scheme = Scheme::CashAddr;
 
-    // Encode cash addr
-    let cash_addr = addr.encode().unwrap();
+    // Encode cashaddr
+    let cashaddr_str = addr.encode().unwrap();
 
     // bchtest:qr4zgpuznfg923ntyauyeh5v7333v72xhum2dsdgfh
-    println!("{}", cash_addr);
+    println!("{}", cashaddr_str);
 }

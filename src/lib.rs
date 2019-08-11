@@ -1,29 +1,29 @@
 //! # Bitcoin Cash Address Library
 //!
-//! A simple library providing an `Address` struct enabling 
+//! A simple library providing an `Address` struct enabling
 //! encoding/decoding of Bitcoin Cash addresses.
-//! 
+//!
 //! ```
 //! use bitcoincash_addr::{Address, Network, Scheme};
-//! 
+//!
 //! fn main() {
-//!     // Decode base 58 address
+//!     // Decode base58 address
 //!     let legacy_addr = "1NM2HFXin4cEQRBLjkNZAS98qLX9JKzjKn";
 //!     let mut addr = Address::decode(legacy_addr).unwrap();
-//! 
-//!     // Change the base 58 address to a test network cashaddr
+//!
+//!     // Change the base58 address to a test network cashaddr
 //!     addr.network = Network::Test;
 //!     addr.scheme = Scheme::CashAddr;
-//! 
+//!
 //!     // Encode cashaddr
-//!     let cash_addr = addr.encode().unwrap();
-//! 
+//!     let cashaddr_str = addr.encode().unwrap();
+//!
 //!     // bchtest:qr4zgpuznfg923ntyauyeh5v7333v72xhum2dsdgfh
-//!     println!("{}", cash_addr);
+//!     println!("{}", cashaddr_str);
 //! }
-//! 
+//!
 //! ```
-//! 
+//!
 
 mod base58;
 mod cashaddr;
@@ -47,13 +47,13 @@ pub enum Network {
 /// Address encoding scheme
 #[derive(PartialEq, Clone)]
 pub enum Scheme {
-    /// Base 58 encoding
+    /// Base58 encoding
     Base58,
     /// CashAddress encoding
     CashAddr,
 }
 
-/// Type of the hash160 raw bytes
+/// Intepretation of the Hash160 bytes
 #[derive(PartialEq, Clone)]
 pub enum HashType {
     /// Public key hash
@@ -62,8 +62,8 @@ pub enum HashType {
     Script,
 }
 
-/// Struct containing address bytes and metadata required to encode an address 
-/// string and yielded via decoding.
+/// Struct containing the bytes and metadata of a Bitcoin Cash address.
+/// This is yeilded during decoding or consumed during encoding.
 #[derive(PartialEq, Clone)]
 pub struct Address {
     /// Address bytes
@@ -76,7 +76,7 @@ pub struct Address {
     pub network: Network,
 }
 
-/// Creates an empty `Address` struct, with the `body` bytes the empty vector, 
+/// Creates an empty `Address` struct, with the `body` bytes the empty vector,
 /// `Scheme::CashAddr`, `HashType::Key`, and `Network::Main`.
 impl Default for Address {
     fn default() -> Self {

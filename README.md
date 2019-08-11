@@ -10,25 +10,25 @@ A simple library providing an `Address` struct enabling encoding/decoding of Bit
 
 ## Examples
 
-### Convert Base 58 to CashAddr
+### Convert Base58 to CashAddr
 
 ```rust
 use bitcoincash_addr::{Address, Network, Scheme};
 
 fn main() {
-    // Decode base 58 address
+    // Decode base58 address
     let legacy_addr = "1NM2HFXin4cEQRBLjkNZAS98qLX9JKzjKn";
     let mut addr = Address::decode(legacy_addr).unwrap();
 
-    // Change the base 58 address to a test network cashaddr
+    // Change the base58 address to a test network cashaddr
     addr.network = Network::Test;
     addr.scheme = Scheme::CashAddr;
 
     // Encode cashaddr
-    let cash_addr = addr.encode().unwrap();
+    let cashaddr_str = addr.encode().unwrap();
 
     // bchtest:qr4zgpuznfg923ntyauyeh5v7333v72xhum2dsdgfh
-    println!("{}", cash_addr);
+    println!("{}", cashaddr_str);
 }
 
 ```
@@ -46,7 +46,7 @@ fn main() {
         134, 63, 76, 177, 140, 147, 14, 76,
     ];
 
-    // Construct address struct (defaults to pubkey hash, cash addr and main network)
+    // Construct address struct (defaults to pubkey hash, cashaddr and main network)
     let address = Address {
         body: raw_address.to_vec(),
         ..Default::default()

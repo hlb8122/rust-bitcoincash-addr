@@ -9,13 +9,24 @@ const REGNET_PREFIX: &str = "bchreg";
 const CHARSET: &[u8; 32] = b"qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 
 // The cashaddr character set for decoding
-const CHARSET_REV: [i8; 128] = [
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    15, -1, 10, 17, 21, 20, 26, 30, 7, 5, -1, -1, -1, -1, -1, -1, -1, 29, -1, 24, 13, 25, 9, 8, 23,
-    -1, 18, 22, 31, 27, 19, -1, 1, 0, 3, 16, 11, 28, 12, 14, 6, 4, 2, -1, -1, -1, -1, -1, -1, 29,
-    -1, 24, 13, 25, 9, 8, 23, -1, 18, 22, 31, 27, 19, -1, 1, 0, 3, 16, 11, 28, 12, 14, 6, 4, 2, -1,
-    -1, -1, -1, -1,
+#[rustfmt::skip]
+const CHARSET_REV: [Option<u8>; 128] = [
+    None,     None,     None,     None,     None,     None,     None,     None,
+    None,     None,     None,     None,     None,     None,     None,     None,
+    None,     None,     None,     None,     None,     None,     None,     None,
+    None,     None,     None,     None,     None,     None,     None,     None,
+    None,     None,     None,     None,     None,     None,     None,     None,
+    None,     None,     None,     None,     None,     None,     None,     None,
+    Some(15), None,     Some(10), Some(17), Some(21), Some(20), Some(26), Some(30),
+    Some(7),  Some(5),  None,     None,     None,     None,     None,     None,
+    None,     Some(29), None,     Some(24), Some(13), Some(25), Some(9),  Some(8),
+    Some(23), None,     Some(18), Some(22), Some(31), Some(27), Some(19), None,
+    Some(1),  Some(0),  Some(3),  Some(16), Some(11), Some(28), Some(12), Some(14),
+    Some(6),  Some(4),  Some(2),  None,     None,     None,     None,     None,
+    None,     Some(29),  None,    Some(24), Some(13), Some(25), Some(9),  Some(8),
+    Some(23), None,     Some(18), Some(22), Some(31), Some(27), Some(19), None,
+    Some(1),  Some(0),  Some(3),  Some(16), Some(11), Some(28), Some(12), Some(14),
+    Some(6),  Some(4),  Some(2),  None,     None,     None,     None,     None,
 ];
 
 // Version byte flags
@@ -59,11 +70,6 @@ fn polymod(v: &[u8]) -> u64 {
         }
     }
     c ^ 1
-}
-
-// Verify a checksum
-fn verify_checksum(prefix: &str, payload: &[u8]) -> bool {
-    polymod(&[&expand_prefix(prefix), payload].concat()) == 0
 }
 
 // Expand the address prefix for the checksum operation
@@ -116,7 +122,8 @@ impl AddressCodec for CashAddrCodec {
             HashType::Key => version_byte_flags::TYPE_P2PKH,
             HashType::Script => version_byte_flags::TYPE_P2SH,
         };
-        let version_byte = match raw.len() {
+        let length = raw.len();
+        let version_byte = match length {
             20 => version_byte_flags::SIZE_160,
             24 => version_byte_flags::SIZE_192,
             28 => version_byte_flags::SIZE_224,
@@ -125,7 +132,7 @@ impl AddressCodec for CashAddrCodec {
             48 => version_byte_flags::SIZE_384,
             56 => version_byte_flags::SIZE_448,
             64 => version_byte_flags::SIZE_512,
-            _ => return Err(CashAddrError::InvalidLength.into()),
+            _ => return Err(CashAddrError::InvalidLength(length).into()),
         } | hash_flag;
 
         // Get prefix
@@ -177,7 +184,7 @@ impl AddressCodec for CashAddrCodec {
             MAINNET_PREFIX => Network::Main,
             TESTNET_PREFIX => Network::Test,
             REGNET_PREFIX => Network::Regtest,
-            _ => return Err(CashAddrError::InvalidPrefix.into()),
+            _ => return Err(CashAddrError::InvalidPrefix(prefix.to_string()).into()),
         };
 
         // Do some sanity checks on the string
@@ -191,7 +198,7 @@ impl AddressCodec for CashAddrCodec {
                 return Err(CashAddrError::MixedCase.into());
             }
         } else {
-            return Err(CashAddrError::InvalidLength.into());
+            return Err(CashAddrError::InvalidLength(0).into());
         }
 
         // Decode payload to 5 bit array
@@ -199,21 +206,19 @@ impl AddressCodec for CashAddrCodec {
         let payload_5_bits: Result<Vec<u8>, CashAddrError> = payload_chars
             .map(|c| {
                 let i = c as usize;
-                if let Some(d) = CHARSET_REV.get(i) {
-                    if *d == -1 {
-                        return Err(CashAddrError::InvalidChar);
-                    }
+                if let Some(Some(d)) = CHARSET_REV.get(i) {
                     Ok(*d as u8)
                 } else {
-                    return Err(CashAddrError::InvalidChar);
+                    return Err(CashAddrError::InvalidChar(c));
                 }
             })
             .collect();
         let payload_5_bits = payload_5_bits?;
 
         // Verify the checksum
-        if !verify_checksum(&prefix, &payload_5_bits) {
-            return Err(CashAddrError::ChecksumFailed.into());
+        let checksum = polymod(&[&expand_prefix(prefix), &payload_5_bits[..]].concat());
+        if checksum != 0 {
+            return Err(CashAddrError::ChecksumFailed(checksum).into());
         }
 
         // Convert from 5 bit array to byte array
@@ -236,7 +241,7 @@ impl AddressCodec for CashAddrCodec {
             || (version_size == version_byte_flags::SIZE_448 && body_len != 56)
             || (version_size == version_byte_flags::SIZE_512 && body_len != 64)
         {
-            return Err(CashAddrError::InvalidLength.into());
+            return Err(CashAddrError::InvalidLength(body_len).into());
         }
 
         // Extract the hash type and return
@@ -246,7 +251,7 @@ impl AddressCodec for CashAddrCodec {
         } else if version_type == version_byte_flags::TYPE_P2SH {
             HashType::Script
         } else {
-            return Err(CashAddrError::InvalidVersion.into());
+            return Err(CashAddrError::InvalidVersion(version).into());
         };
 
         Ok(Address {
