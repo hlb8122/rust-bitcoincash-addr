@@ -3,6 +3,8 @@
 [![Build Status](https://travis-ci.org/hlb8122/rust-bitcoincash-addr.svg?branch=master)](https://travis-ci.org/hlb8122/rust-bitcoincash-addr)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Cargo](https://img.shields.io/crates/v/bitcoincash-addr.svg)](https://crates.io/crates/bitcoincash-addr)
+[![Documentation](https://docs.rs/bitcoincash-addr/badge.svg)](
+https://docs.rs/bitcoincash-addr)
 
 A simple library providing an `Address` struct enabling encoding/decoding of Bitcoin Cash addresses.
 
