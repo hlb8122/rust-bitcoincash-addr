@@ -29,7 +29,7 @@ impl fmt::Display for Base58Error {
 }
 
 impl Error for Base58Error {
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         None
     }
     fn description(&self) -> &str {
@@ -78,7 +78,7 @@ impl fmt::Display for CashAddrError {
 }
 
 impl Error for CashAddrError {
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         None
     }
     fn description(&self) -> &str {
@@ -125,7 +125,7 @@ impl fmt::Display for AddressError {
 }
 
 impl Error for AddressError {
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         match *self {
             AddressError::Base58(ref e) => Some(e),
             AddressError::CashAddr(ref e) => Some(e),

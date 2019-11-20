@@ -209,7 +209,7 @@ impl AddressCodec for CashAddrCodec {
                 if let Some(Some(d)) = CHARSET_REV.get(i) {
                     Ok(*d as u8)
                 } else {
-                    return Err(CashAddrError::InvalidChar(c));
+                    Err(CashAddrError::InvalidChar(c))
                 }
             })
             .collect();
