@@ -102,7 +102,8 @@ fn to_base58_str(data: &[u8]) -> String {
 pub struct Base58Codec;
 
 impl AddressCodec for Base58Codec {
-    fn encode(raw: &[u8], hash_type: HashType, network: Network) -> Result<String, AddressError> {
+    type Error = Base58Error;
+    fn encode(raw: &[u8], hash_type: HashType, network: Network) -> Result<String, Self::Error> {
         let addr_type_byte = match (hash_type, network) {
             (HashType::Key, Network::Main) => 0x00,
             (HashType::Key, Network::Test) => 0x6f,
@@ -121,7 +122,7 @@ impl AddressCodec for Base58Codec {
         Ok(to_base58_str(&body))
     }
 
-    fn decode(addr_str: &str) -> Result<Address, AddressError> {
+    fn decode(addr_str: &str) -> Result<Address, Self::Error> {
         // Convert from base58
         let raw = from_base58_str(addr_str)?;
         let length = raw.len();

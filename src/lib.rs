@@ -118,27 +118,32 @@ impl Address {
                 &self.body,
                 self.hash_type.to_owned(),
                 self.network.to_owned(),
-            ),
+            )
+            .map_err(AddressError::CashAddr),
             Scheme::Base58 => Base58Codec::encode(
                 &self.body,
                 self.hash_type.to_owned(),
                 self.network.to_owned(),
-            ),
+            )
+            .map_err(AddressError::Base58),
         }
     }
 
     /// Attempt to convert an address string into bytes
-    pub fn decode(addr_str: &str) -> Result<Self, AddressError> {
-        CashAddrCodec::decode(addr_str).or_else(|_| Base58Codec::decode(addr_str))
+    pub fn decode(addr_str: &str) -> Result<Self, (CashAddrError, Base58Error)> {
+        CashAddrCodec::decode(addr_str).or_else(|cash_err| {
+            Base58Codec::decode(addr_str).map_err(|base58_err| (cash_err, base58_err))
+        })
     }
 }
 
 /// A trait providing an interface for encoding and decoding the `Address` struct
 /// for each address scheme.
 pub trait AddressCodec {
+    type Error;
     /// Attempt to convert the raw address bytes to a string
-    fn encode(raw: &[u8], hash_type: HashType, network: Network) -> Result<String, AddressError>;
+    fn encode(raw: &[u8], hash_type: HashType, network: Network) -> Result<String, Self::Error>;
 
     /// Attempt to convert the address string to bytes
-    fn decode(s: &str) -> Result<Address, AddressError>;
+    fn decode(s: &str) -> Result<Address, Self::Error>;
 }

@@ -116,7 +116,8 @@ fn convert_bits(data: &[u8], inbits: u8, outbits: u8, pad: bool) -> Vec<u8> {
 pub struct CashAddrCodec;
 
 impl AddressCodec for CashAddrCodec {
-    fn encode(raw: &[u8], hash_type: HashType, network: Network) -> Result<String, AddressError> {
+    type Error = CashAddrError;
+    fn encode(raw: &[u8], hash_type: HashType, network: Network) -> Result<String, Self::Error> {
         // Calculate version byte
         let hash_flag = match hash_type {
             HashType::Key => version_byte_flags::TYPE_P2PKH,
@@ -170,7 +171,7 @@ impl AddressCodec for CashAddrCodec {
         Ok(cashaddr)
     }
 
-    fn decode(addr_str: &str) -> Result<Address, AddressError> {
+    fn decode(addr_str: &str) -> Result<Address, Self::Error> {
         // Delimit and extract prefix
         let parts: Vec<&str> = addr_str.split(':').collect();
         if parts.len() != 2 {
