@@ -1,7 +1,7 @@
 [package]
 name = "bitcoincash-addr"
-version = "0.2.0"
-authors = ["Harry L. Barber <hlbarber93@gmail.com>"]
+version = "0.2.1"
+authors = ["Harry L. Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
 homepage = "https://github.com/hlb8122/rust-bitcoincash-addr"
