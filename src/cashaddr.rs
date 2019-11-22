@@ -133,7 +133,7 @@ impl AddressCodec for CashAddrCodec {
             48 => version_byte_flags::SIZE_384,
             56 => version_byte_flags::SIZE_448,
             64 => version_byte_flags::SIZE_512,
-            _ => return Err(CashAddrError::InvalidLength(length).into()),
+            _ => return Err(CashAddrError::InvalidLength(length)),
         } | hash_flag;
 
         // Get prefix
@@ -175,7 +175,7 @@ impl AddressCodec for CashAddrCodec {
         // Delimit and extract prefix
         let parts: Vec<&str> = addr_str.split(':').collect();
         if parts.len() != 2 {
-            return Err(CashAddrError::NoPrefix.into());
+            return Err(CashAddrError::NoPrefix);
         }
         let prefix = parts[0];
         let payload_str = parts[1];
@@ -185,7 +185,7 @@ impl AddressCodec for CashAddrCodec {
             MAINNET_PREFIX => Network::Main,
             TESTNET_PREFIX => Network::Test,
             REGNET_PREFIX => Network::Regtest,
-            _ => return Err(CashAddrError::InvalidPrefix(prefix.to_string()).into()),
+            _ => return Err(CashAddrError::InvalidPrefix(prefix.to_string())),
         };
 
         // Do some sanity checks on the string
@@ -193,13 +193,13 @@ impl AddressCodec for CashAddrCodec {
         if let Some(first_char) = payload_chars.next() {
             if first_char.is_lowercase() {
                 if payload_chars.any(|c| c.is_uppercase()) {
-                    return Err(CashAddrError::MixedCase.into());
+                    return Err(CashAddrError::MixedCase);
                 }
             } else if payload_chars.any(|c| c.is_lowercase()) {
-                return Err(CashAddrError::MixedCase.into());
+                return Err(CashAddrError::MixedCase);
             }
         } else {
-            return Err(CashAddrError::InvalidLength(0).into());
+            return Err(CashAddrError::InvalidLength(0));
         }
 
         // Decode payload to 5 bit array
@@ -219,7 +219,7 @@ impl AddressCodec for CashAddrCodec {
         // Verify the checksum
         let checksum = polymod(&[&expand_prefix(prefix), &payload_5_bits[..]].concat());
         if checksum != 0 {
-            return Err(CashAddrError::ChecksumFailed(checksum).into());
+            return Err(CashAddrError::ChecksumFailed(checksum));
         }
 
         // Convert from 5 bit array to byte array
@@ -242,7 +242,7 @@ impl AddressCodec for CashAddrCodec {
             || (version_size == version_byte_flags::SIZE_448 && body_len != 56)
             || (version_size == version_byte_flags::SIZE_512 && body_len != 64)
         {
-            return Err(CashAddrError::InvalidLength(body_len).into());
+            return Err(CashAddrError::InvalidLength(body_len));
         }
 
         // Extract the hash type and return
@@ -252,7 +252,7 @@ impl AddressCodec for CashAddrCodec {
         } else if version_type == version_byte_flags::TYPE_P2SH {
             HashType::Script
         } else {
-            return Err(CashAddrError::InvalidVersion(version).into());
+            return Err(CashAddrError::InvalidVersion(version));
         };
 
         Ok(Address {

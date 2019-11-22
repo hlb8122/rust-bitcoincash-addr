@@ -127,7 +127,7 @@ impl AddressCodec for Base58Codec {
         let raw = from_base58_str(addr_str)?;
         let length = raw.len();
         if length != 25 {
-            return Err(Base58Error::InvalidLength(length).into());
+            return Err(Base58Error::InvalidLength(length));
         }
 
         // Parse network and hash type
@@ -137,7 +137,7 @@ impl AddressCodec for Base58Codec {
             0x05 => (Network::Main, HashType::Script),
             0x6f => (Network::Test, HashType::Key),
             0xc4 => (Network::Test, HashType::Script),
-            _ => return Err(Base58Error::InvalidVersion(version_byte).into()),
+            _ => return Err(Base58Error::InvalidVersion(version_byte)),
         };
 
         // Verify checksum
@@ -148,8 +148,7 @@ impl AddressCodec for Base58Codec {
             return Err(Base58Error::ChecksumFailed {
                 expected: checksum_expected.to_vec(),
                 actual: checksum_actual.to_vec(),
-            }
-            .into());
+            });
         }
 
         // Extract hash160 address and return
