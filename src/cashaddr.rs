@@ -360,6 +360,6 @@ mod tests {
         let output = CashAddrCodec::encode(data, hash_type, network).unwrap();
         assert!(output == cashaddr.to_ascii_lowercase());
         let decoded = CashAddrCodec::decode(cashaddr).unwrap();
-        assert!(decoded.as_ref().to_vec() == *data);
+        assert!(decoded.into_body() == *data);
     }
 }

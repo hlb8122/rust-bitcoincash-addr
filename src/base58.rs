@@ -186,7 +186,7 @@ mod tests {
     fn from_legacyaddr() {
         let legacyaddr = "1NM2HFXin4cEQRBLjkNZAS98qLX9JKzjKn";
         let result = Base58Codec::decode(legacyaddr).unwrap();
-        let hash160 = result.as_ref();
+        let hash160 = result.as_body();
         assert!(hex::encode(hash160) == "ea2407829a5055466b27784cde8cf463167946bf");
     }
 
