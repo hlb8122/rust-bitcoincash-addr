@@ -89,12 +89,6 @@ impl Default for Address {
     }
 }
 
-impl<'a> AsRef<[u8]> for Address {
-    fn as_ref(&self) -> &[u8] {
-        &self.body
-    }
-}
-
 impl Address {
     /// Create a new address.
     pub fn new(body: Vec<u8>, scheme: Scheme, hash_type: HashType, network: Network) -> Self {
@@ -107,6 +101,9 @@ impl Address {
     }
 
     /// Borrow address bytes.
+    pub fn as_body(&self) -> &[u8] {
+        &self.body
+    }
 
     /// Take address bytes.
     pub fn into_body(self) -> Vec<u8> {
