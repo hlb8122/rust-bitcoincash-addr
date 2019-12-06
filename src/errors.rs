@@ -1,6 +1,52 @@
 use std::{error::Error, fmt};
 
-/// Error concerning encoding/decoding of base58 addresses
+/// Error concerning decoding of addresses
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum AddressDecodingError {
+    /// Base58 address error
+    Base58(Base58Error),
+    /// CashAddr error
+    CashAddr(CashAddrDecodingError),
+}
+
+impl From<Base58Error> for AddressDecodingError {
+    fn from(e: Base58Error) -> Self {
+        AddressDecodingError::Base58(e)
+    }
+}
+
+impl From<CashAddrDecodingError> for AddressDecodingError {
+    fn from(e: CashAddrDecodingError) -> Self {
+        AddressDecodingError::CashAddr(e)
+    }
+}
+
+impl fmt::Display for AddressDecodingError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            AddressDecodingError::Base58(ref e) => write!(f, "base58 error: {}", e),
+            AddressDecodingError::CashAddr(ref e) => write!(f, "cashaddr error: {}", e),
+        }
+    }
+}
+
+impl Error for AddressDecodingError {
+    fn cause(&self) -> Option<&dyn Error> {
+        match *self {
+            AddressDecodingError::Base58(ref e) => Some(e),
+            AddressDecodingError::CashAddr(ref e) => Some(e),
+        }
+    }
+
+    fn description(&self) -> &str {
+        match *self {
+            AddressDecodingError::Base58(_) => "base58 error: {}",
+            AddressDecodingError::CashAddr(_) => "cashaddr error: {}",
+        }
+    }
+}
+
+/// Error concerning decoding of base58 addresses
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Base58Error {
     /// Unexpected character (char)
@@ -42,100 +88,77 @@ impl Error for Base58Error {
     }
 }
 
-/// Error concerning encoding/decoding of cashaddrs
+/// Error concerning decoding of cashaddrs.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum CashAddrError {
-    /// Invalid length (length)
+pub enum CashAddrDecodingError {
+    /// Invalid length (length).
     InvalidLength(usize),
-    /// Zero or multiple prefixes
+    /// Zero or multiple prefixes.
     NoPrefix,
-    /// Failed to match known prefixes (prefix)
+    /// Failed to match known prefixes (prefix).
     InvalidPrefix(String),
-    /// Checksum failed (checksum)
+    /// Checksum failed (checksum).
     ChecksumFailed(u64),
-    /// Unexpected character (char)
+    /// Unexpected character (char).
     InvalidChar(char),
-    /// Version byte was not recognized
+    /// Version byte was not recognized.
     InvalidVersion(u8),
-    /// Upper and lowercase address string
+    /// Upper and lowercase address string.
     MixedCase,
 }
 
-impl fmt::Display for CashAddrError {
+impl fmt::Display for CashAddrDecodingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            CashAddrError::ChecksumFailed(actual) => {
+            CashAddrDecodingError::ChecksumFailed(actual) => {
                 write!(f, "invalid checksum (actual {} != 0)", actual)
             }
-            CashAddrError::InvalidChar(index) => write!(f, "invalid char ({})", index),
-            CashAddrError::NoPrefix => write!(f, "zero or multiple prefixes"),
-            CashAddrError::MixedCase => write!(f, "mixed case string"),
-            CashAddrError::InvalidVersion(c) => write!(f, "invalid version byte ({})", c),
-            CashAddrError::InvalidPrefix(prefix) => write!(f, "invalid prefix ({})", prefix),
-            CashAddrError::InvalidLength(length) => write!(f, "invalid length ({})", length),
+            CashAddrDecodingError::InvalidChar(index) => write!(f, "invalid char ({})", index),
+            CashAddrDecodingError::NoPrefix => write!(f, "zero or multiple prefixes"),
+            CashAddrDecodingError::MixedCase => write!(f, "mixed case string"),
+            CashAddrDecodingError::InvalidVersion(c) => write!(f, "invalid version byte ({})", c),
+            CashAddrDecodingError::InvalidPrefix(prefix) => {
+                write!(f, "invalid prefix ({})", prefix)
+            }
+            CashAddrDecodingError::InvalidLength(length) => {
+                write!(f, "invalid length ({})", length)
+            }
         }
     }
 }
 
-impl Error for CashAddrError {
+impl Error for CashAddrDecodingError {
     fn cause(&self) -> Option<&dyn Error> {
         None
     }
     fn description(&self) -> &str {
         match *self {
-            CashAddrError::ChecksumFailed { .. } => "invalid checksum",
-            CashAddrError::InvalidChar(_) => "invalid char",
-            CashAddrError::NoPrefix => "zero or multiple prefixes",
-            CashAddrError::MixedCase => "mixed case string",
-            CashAddrError::InvalidVersion(_) => "invalid version byte",
-            CashAddrError::InvalidPrefix(_) => "invalid prefix",
-            CashAddrError::InvalidLength(_) => "invalid length",
+            CashAddrDecodingError::ChecksumFailed { .. } => "invalid checksum",
+            CashAddrDecodingError::InvalidChar(_) => "invalid char",
+            CashAddrDecodingError::NoPrefix => "zero or multiple prefixes",
+            CashAddrDecodingError::MixedCase => "mixed case string",
+            CashAddrDecodingError::InvalidVersion(_) => "invalid version byte",
+            CashAddrDecodingError::InvalidPrefix(_) => "invalid prefix",
+            CashAddrDecodingError::InvalidLength(_) => "invalid length",
         }
     }
 }
 
-/// Error concerning encoding/decoding of addresses
+/// Error concerning encoding of cashaddrs.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum AddressError {
-    /// Base58 address error
-    Base58(Base58Error),
-    /// CashAddr error
-    CashAddr(CashAddrError),
-}
+pub struct CashAddrInvalidLength(pub usize);
 
-impl From<Base58Error> for AddressError {
-    fn from(e: Base58Error) -> AddressError {
-        AddressError::Base58(e)
-    }
-}
-
-impl From<CashAddrError> for AddressError {
-    fn from(e: CashAddrError) -> AddressError {
-        AddressError::CashAddr(e)
-    }
-}
-
-impl fmt::Display for AddressError {
+impl fmt::Display for CashAddrInvalidLength {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            AddressError::Base58(ref e) => write!(f, "base58 error: {}", e),
-            AddressError::CashAddr(ref e) => write!(f, "cashaddr error: {}", e),
-        }
+        write!(f, "invalid length ({})", self.0)
     }
 }
 
-impl Error for AddressError {
+impl Error for CashAddrInvalidLength {
     fn cause(&self) -> Option<&dyn Error> {
-        match *self {
-            AddressError::Base58(ref e) => Some(e),
-            AddressError::CashAddr(ref e) => Some(e),
-        }
+        None
     }
-
     fn description(&self) -> &str {
-        match *self {
-            AddressError::Base58(_) => "base58 error",
-            AddressError::CashAddr(_) => "cashaddr error",
-        }
+        "invalid length"
     }
 }

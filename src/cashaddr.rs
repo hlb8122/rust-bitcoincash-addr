@@ -116,8 +116,14 @@ fn convert_bits(data: &[u8], inbits: u8, outbits: u8, pad: bool) -> Vec<u8> {
 pub struct CashAddrCodec;
 
 impl AddressCodec for CashAddrCodec {
-    type Error = CashAddrError;
-    fn encode(raw: &[u8], hash_type: HashType, network: Network) -> Result<String, Self::Error> {
+    type EncodingError = CashAddrInvalidLength;
+    type DecodingError = CashAddrDecodingError;
+
+    fn encode(
+        raw: &[u8],
+        hash_type: HashType,
+        network: Network,
+    ) -> Result<String, Self::EncodingError> {
         // Calculate version byte
         let hash_flag = match hash_type {
             HashType::Key => version_byte_flags::TYPE_P2PKH,
@@ -133,7 +139,7 @@ impl AddressCodec for CashAddrCodec {
             48 => version_byte_flags::SIZE_384,
             56 => version_byte_flags::SIZE_448,
             64 => version_byte_flags::SIZE_512,
-            _ => return Err(CashAddrError::InvalidLength(length)),
+            _ => return Err(CashAddrInvalidLength(length)),
         } | hash_flag;
 
         // Get prefix
@@ -171,11 +177,11 @@ impl AddressCodec for CashAddrCodec {
         Ok(cashaddr)
     }
 
-    fn decode(addr_str: &str) -> Result<Address, Self::Error> {
+    fn decode(addr_str: &str) -> Result<Address, Self::DecodingError> {
         // Delimit and extract prefix
         let parts: Vec<&str> = addr_str.split(':').collect();
         if parts.len() != 2 {
-            return Err(CashAddrError::NoPrefix);
+            return Err(CashAddrDecodingError::NoPrefix);
         }
         let prefix = parts[0];
         let payload_str = parts[1];
@@ -185,7 +191,7 @@ impl AddressCodec for CashAddrCodec {
             MAINNET_PREFIX => Network::Main,
             TESTNET_PREFIX => Network::Test,
             REGNET_PREFIX => Network::Regtest,
-            _ => return Err(CashAddrError::InvalidPrefix(prefix.to_string())),
+            _ => return Err(CashAddrDecodingError::InvalidPrefix(prefix.to_string())),
         };
 
         // Do some sanity checks on the string
@@ -193,24 +199,24 @@ impl AddressCodec for CashAddrCodec {
         if let Some(first_char) = payload_chars.next() {
             if first_char.is_lowercase() {
                 if payload_chars.any(|c| c.is_uppercase()) {
-                    return Err(CashAddrError::MixedCase);
+                    return Err(CashAddrDecodingError::MixedCase);
                 }
             } else if payload_chars.any(|c| c.is_lowercase()) {
-                return Err(CashAddrError::MixedCase);
+                return Err(CashAddrDecodingError::MixedCase);
             }
         } else {
-            return Err(CashAddrError::InvalidLength(0));
+            return Err(CashAddrDecodingError::InvalidLength(0));
         }
 
         // Decode payload to 5 bit array
         let payload_chars = payload_str.chars(); // Reintialize iterator here
-        let payload_5_bits: Result<Vec<u8>, CashAddrError> = payload_chars
+        let payload_5_bits: Result<Vec<u8>, CashAddrDecodingError> = payload_chars
             .map(|c| {
                 let i = c as usize;
                 if let Some(Some(d)) = CHARSET_REV.get(i) {
                     Ok(*d as u8)
                 } else {
-                    Err(CashAddrError::InvalidChar(c))
+                    Err(CashAddrDecodingError::InvalidChar(c))
                 }
             })
             .collect();
@@ -219,7 +225,7 @@ impl AddressCodec for CashAddrCodec {
         // Verify the checksum
         let checksum = polymod(&[&expand_prefix(prefix), &payload_5_bits[..]].concat());
         if checksum != 0 {
-            return Err(CashAddrError::ChecksumFailed(checksum));
+            return Err(CashAddrDecodingError::ChecksumFailed(checksum));
         }
 
         // Convert from 5 bit array to byte array
@@ -242,7 +248,7 @@ impl AddressCodec for CashAddrCodec {
             || (version_size == version_byte_flags::SIZE_448 && body_len != 56)
             || (version_size == version_byte_flags::SIZE_512 && body_len != 64)
         {
-            return Err(CashAddrError::InvalidLength(body_len));
+            return Err(CashAddrDecodingError::InvalidLength(body_len));
         }
 
         // Extract the hash type and return
@@ -252,7 +258,7 @@ impl AddressCodec for CashAddrCodec {
         } else if version_type == version_byte_flags::TYPE_P2SH {
             HashType::Script
         } else {
-            return Err(CashAddrError::InvalidVersion(version));
+            return Err(CashAddrDecodingError::InvalidVersion(version));
         };
 
         Ok(Address {

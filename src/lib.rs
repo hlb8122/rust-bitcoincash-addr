@@ -112,38 +112,42 @@ impl Address {
     }
 
     /// Attempt to convert the raw address bytes to a string
-    pub fn encode(&self) -> Result<String, AddressError> {
+    pub fn encode(&self) -> Result<String, CashAddrInvalidLength> {
         match self.scheme {
             Scheme::CashAddr => CashAddrCodec::encode(
                 &self.body,
                 self.hash_type.to_owned(),
                 self.network.to_owned(),
-            )
-            .map_err(AddressError::CashAddr),
-            Scheme::Base58 => Base58Codec::encode(
+            ),
+            Scheme::Base58 => Ok(Base58Codec::encode(
                 &self.body,
                 self.hash_type.to_owned(),
                 self.network.to_owned(),
             )
-            .map_err(AddressError::Base58),
+            .unwrap()), // Base58 encoding is infallible
         }
     }
 
     /// Attempt to convert an address string into bytes
-    pub fn decode(addr_str: &str) -> Result<Self, (CashAddrError, Base58Error)> {
+    pub fn decode(addr_str: &str) -> Result<Self, (CashAddrDecodingError, Base58Error)> {
         CashAddrCodec::decode(addr_str).or_else(|cash_err| {
             Base58Codec::decode(addr_str).map_err(|base58_err| (cash_err, base58_err))
         })
     }
 }
 
-/// A trait providing an interface for encoding and decoding the `Address` struct
-/// for each address scheme.
+/// A trait providing an interface for encoding and decoding the `Address` struct for each address scheme.
 pub trait AddressCodec {
-    type Error;
+    type EncodingError;
+    type DecodingError;
+
     /// Attempt to convert the raw address bytes to a string
-    fn encode(raw: &[u8], hash_type: HashType, network: Network) -> Result<String, Self::Error>;
+    fn encode(
+        raw: &[u8],
+        hash_type: HashType,
+        network: Network,
+    ) -> Result<String, Self::EncodingError>;
 
     /// Attempt to convert the address string to bytes
-    fn decode(s: &str) -> Result<Address, Self::Error>;
+    fn decode(s: &str) -> Result<Address, Self::DecodingError>;
 }
