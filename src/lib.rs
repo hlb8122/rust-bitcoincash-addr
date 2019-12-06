@@ -33,27 +33,27 @@ pub use base58::Base58Codec;
 pub use cashaddr::CashAddrCodec;
 pub use errors::*;
 
-/// Bitcoin Networks
+/// Bitcoin Networks.
 #[derive(PartialEq, Clone, Debug)]
 pub enum Network {
-    /// Main network
+    /// Main network.
     Main,
-    /// Test network
+    /// Test network.
     Test,
-    /// Regression test network
+    /// Regression test network.
     Regtest,
 }
 
-/// Address encoding scheme
+/// Address encoding scheme.
 #[derive(PartialEq, Clone, Debug)]
 pub enum Scheme {
-    /// Base58 encoding
+    /// Base58 encoding.
     Base58,
-    /// CashAddress encoding
+    /// CashAddr encoding.
     CashAddr,
 }
 
-/// Intepretation of the Hash160 bytes
+/// Intepretation of the Hash160 bytes.
 #[derive(PartialEq, Clone, Debug)]
 pub enum HashType {
     /// Public key hash
@@ -96,7 +96,7 @@ impl<'a> AsRef<[u8]> for Address {
 }
 
 impl Address {
-    /// Create a new address
+    /// Create a new address.
     pub fn new(body: Vec<u8>, scheme: Scheme, hash_type: HashType, network: Network) -> Self {
         Address {
             body,
@@ -106,12 +106,14 @@ impl Address {
         }
     }
 
-    /// Take address bytes
+    /// Borrow address bytes.
+
+    /// Take address bytes.
     pub fn into_body(self) -> Vec<u8> {
         self.body
     }
 
-    /// Attempt to convert the raw address bytes to a string
+    /// Attempt to convert the raw address bytes to a string.
     pub fn encode(&self) -> Result<String, CashAddrInvalidLength> {
         match self.scheme {
             Scheme::CashAddr => CashAddrCodec::encode(
@@ -128,7 +130,7 @@ impl Address {
         }
     }
 
-    /// Attempt to convert an address string into bytes
+    /// Attempt to convert an address string into bytes.
     pub fn decode(addr_str: &str) -> Result<Self, (CashAddrDecodingError, Base58Error)> {
         CashAddrCodec::decode(addr_str).or_else(|cash_err| {
             Base58Codec::decode(addr_str).map_err(|base58_err| (cash_err, base58_err))
@@ -141,13 +143,13 @@ pub trait AddressCodec {
     type EncodingError;
     type DecodingError;
 
-    /// Attempt to convert the raw address bytes to a string
+    /// Attempt to convert the raw address bytes to a string.
     fn encode(
         raw: &[u8],
         hash_type: HashType,
         network: Network,
     ) -> Result<String, Self::EncodingError>;
 
-    /// Attempt to convert the address string to bytes
+    /// Attempt to convert the address string to bytes.
     fn decode(s: &str) -> Result<Address, Self::DecodingError>;
 }

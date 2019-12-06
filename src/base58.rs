@@ -98,7 +98,7 @@ fn to_base58_str(data: &[u8]) -> String {
     out
 }
 
-/// Codec allowing the encoding and decoding of base58 addresses
+/// Codec allowing the encoding and decoding of Base58 addresses.
 pub struct Base58Codec;
 
 impl AddressCodec for Base58Codec {

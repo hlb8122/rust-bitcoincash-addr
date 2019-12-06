@@ -72,7 +72,7 @@ fn polymod(v: &[u8]) -> u64 {
     c ^ 1
 }
 
-// Expand the address prefix for the checksum operation
+// Expand the address prefix for the checksum operation.
 fn expand_prefix(prefix: &str) -> Vec<u8> {
     let mut ret: Vec<u8> = prefix.chars().map(|c| (c as u8) & 0x1f).collect();
     ret.push(0);
@@ -112,7 +112,7 @@ fn convert_bits(data: &[u8], inbits: u8, outbits: u8, pad: bool) -> Vec<u8> {
     ret
 }
 
-/// Codec allowing the encoding and decoding of cashaddrs
+/// Codec allowing the encoding and decoding of CashAddrs.
 pub struct CashAddrCodec;
 
 impl AddressCodec for CashAddrCodec {

@@ -1,11 +1,11 @@
 use std::{error::Error, fmt};
 
-/// Error concerning decoding of addresses
+/// Error concerning decoding of addresses.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum AddressDecodingError {
-    /// Base58 address error
+    /// Base58 address error.
     Base58(Base58Error),
-    /// CashAddr error
+    /// CashAddr error.
     CashAddr(CashAddrDecodingError),
 }
 
@@ -46,16 +46,16 @@ impl Error for AddressDecodingError {
     }
 }
 
-/// Error concerning decoding of base58 addresses
+/// Error concerning decoding of base58 addresses.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Base58Error {
-    /// Unexpected character (char)
+    /// Unexpected character (char).
     InvalidChar(char),
-    /// Checksum failed (expected, actual)
+    /// Checksum failed (expected, actual).
     ChecksumFailed { expected: Vec<u8>, actual: Vec<u8> },
-    /// Invalid length (length)
+    /// Invalid length (length).
     InvalidLength(usize),
-    /// Version byte was not recognized
+    /// Version byte was not recognized.
     InvalidVersion(u8),
 }
 
