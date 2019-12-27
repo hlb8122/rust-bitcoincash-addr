@@ -1,7 +1,10 @@
 // https://github.com/rust-bitcoin/rust-bitcoin/blob/master/src/util/address.rs
+pub mod errors;
+
 use bitcoin_hashes::{sha256d::Hash as Sha256d, Hash};
 
 use crate::*;
+pub use errors::DecodingError;
 
 const BASE58_CHARS: &[u8] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
@@ -25,19 +28,19 @@ const BASE58_DIGITS: [Option<u8>; 128] = [
     Some(55), Some(56), Some(57), None,     None,     None,     None,     None,     // 120-127
 ];
 
-fn from_base58_str(data: &str) -> Result<Vec<u8>, Base58Error> {
+fn from_base58_str(data: &str) -> Result<Vec<u8>, DecodingError> {
     // 11/15 is just over log_256(58)
     let mut scratch = vec![0u8; 1 + data.len() * 11 / 15];
     // Build in base 256
     for d58 in data.bytes() {
         // Compute "X = X * 58 + next_digit" in base 256
         if d58 as usize > BASE58_DIGITS.len() {
-            return Err(Base58Error::InvalidChar(d58 as char));
+            return Err(DecodingError::InvalidChar(d58 as char));
         }
         let mut carry = match BASE58_DIGITS[d58 as usize] {
             Some(d58) => u32::from(d58),
             None => {
-                return Err(Base58Error::InvalidChar(d58 as char));
+                return Err(DecodingError::InvalidChar(d58 as char));
             }
         };
         for d256 in scratch.iter_mut().rev() {
@@ -103,7 +106,7 @@ pub struct Base58Codec;
 
 impl AddressCodec for Base58Codec {
     type EncodingError = ();
-    type DecodingError = Base58Error;
+    type DecodingError = DecodingError;
 
     fn encode(
         raw: &[u8],
@@ -133,7 +136,7 @@ impl AddressCodec for Base58Codec {
         let raw = from_base58_str(addr_str)?;
         let length = raw.len();
         if length != 25 {
-            return Err(Base58Error::InvalidLength(length));
+            return Err(DecodingError::InvalidLength(length));
         }
 
         // Parse network and hash type
@@ -143,7 +146,7 @@ impl AddressCodec for Base58Codec {
             0x05 => (Network::Main, HashType::Script),
             0x6f => (Network::Test, HashType::Key),
             0xc4 => (Network::Test, HashType::Script),
-            _ => return Err(Base58Error::InvalidVersion(version_byte)),
+            _ => return Err(DecodingError::InvalidVersion(version_byte)),
         };
 
         // Verify checksum
@@ -151,7 +154,7 @@ impl AddressCodec for Base58Codec {
         let checksum_actual = &raw[raw.len() - 4..];
         let checksum_expected = &Sha256d::hash(payload)[0..4];
         if checksum_expected != checksum_actual {
-            return Err(Base58Error::ChecksumFailed {
+            return Err(DecodingError::ChecksumFailed {
                 expected: checksum_expected.to_vec(),
                 actual: checksum_actual.to_vec(),
             });

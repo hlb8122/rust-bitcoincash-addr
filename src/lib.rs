@@ -27,11 +27,9 @@
 
 mod base58;
 mod cashaddr;
-mod errors;
 
 pub use base58::Base58Codec;
 pub use cashaddr::CashAddrCodec;
-pub use errors::*;
 
 /// Bitcoin Networks.
 #[derive(PartialEq, Clone, Debug)]
@@ -111,7 +109,7 @@ impl Address {
     }
 
     /// Attempt to convert the raw address bytes to a string.
-    pub fn encode(&self) -> Result<String, CashAddrInvalidLength> {
+    pub fn encode(&self) -> Result<String, cashaddr::EncodingError> {
         match self.scheme {
             Scheme::CashAddr => CashAddrCodec::encode(
                 &self.body,
@@ -128,7 +126,9 @@ impl Address {
     }
 
     /// Attempt to convert an address string into bytes.
-    pub fn decode(addr_str: &str) -> Result<Self, (CashAddrDecodingError, Base58Error)> {
+    pub fn decode(
+        addr_str: &str,
+    ) -> Result<Self, (cashaddr::DecodingError, base58::DecodingError)> {
         CashAddrCodec::decode(addr_str).or_else(|cash_err| {
             Base58Codec::decode(addr_str).map_err(|base58_err| (cash_err, base58_err))
         })
