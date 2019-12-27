@@ -1,4 +1,4 @@
-use bitcoincash_addr::Address;
+use bitcoincash_addr::{Address, CashAddrCodec};
 
 fn main() {
     // Raw hash160 bytes
@@ -9,7 +9,7 @@ fn main() {
     ];
 
     // Construct address struct (defaults to pubkey hash, cash addr and main network)
-    let address = Address {
+    let address = Address::<CashAddrCodec> {
         body: raw_address.to_vec(),
         ..Default::default()
     };

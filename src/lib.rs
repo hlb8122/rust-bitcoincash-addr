@@ -31,6 +31,8 @@ mod cashaddr;
 pub use base58::Base58Codec;
 pub use cashaddr::CashAddrCodec;
 
+use std::marker::PhantomData;
+
 /// Bitcoin Networks.
 #[derive(PartialEq, Clone, Debug)]
 pub enum Network {
@@ -40,15 +42,6 @@ pub enum Network {
     Test,
     /// Regression test network.
     Regtest,
-}
-
-/// Address encoding scheme.
-#[derive(PartialEq, Clone, Debug)]
-pub enum Scheme {
-    /// Base58 encoding.
-    Base58,
-    /// CashAddr encoding.
-    CashAddr,
 }
 
 /// Intepretation of the Hash160 bytes.
@@ -63,11 +56,11 @@ pub enum HashType {
 /// Struct containing the bytes and metadata of a Bitcoin Cash address.
 /// This is yeilded during decoding or consumed during encoding.
 #[derive(PartialEq, Clone, Debug)]
-pub struct Address {
+pub struct Address<C> {
     /// Address bytes
     pub body: Vec<u8>,
-    /// Encoding scheme
-    pub scheme: Scheme,
+    /// Address Codec
+    pub scheme: PhantomData<C>,
     /// Hash type
     pub hash_type: HashType,
     /// Network
@@ -76,25 +69,43 @@ pub struct Address {
 
 /// Creates an empty `Address` struct, with the `body` bytes the empty vector,
 /// `Scheme::CashAddr`, `HashType::Key`, and `Network::Main`.
-impl Default for Address {
+impl<Codec> Default for Address<Codec> {
     fn default() -> Self {
         Address {
             body: vec![],
-            scheme: Scheme::CashAddr,
+            scheme: PhantomData::default(),
             hash_type: HashType::Key,
             network: Network::Main,
         }
     }
 }
 
-impl Address {
+impl<Codec> Address<Codec> {
     /// Create a new address.
-    pub fn new(body: Vec<u8>, scheme: Scheme, hash_type: HashType, network: Network) -> Self {
+    pub fn new(body: Vec<u8>, hash_type: HashType, network: Network) -> Self {
         Address {
             body,
-            scheme,
+            scheme: PhantomData::default(),
             hash_type,
             network,
+        }
+    }
+
+    pub fn into_base58(self) -> Address<Base58Codec> {
+        Address {
+            body: self.body,
+            scheme: PhantomData::<Base58Codec>::default(),
+            hash_type: self.hash_type,
+            network: self.network,
+        }
+    }
+
+    pub fn into_cashaddr(self) -> Address<CashAddrCodec> {
+        Address {
+            body: self.body,
+            scheme: PhantomData::<CashAddrCodec>::default(),
+            hash_type: self.hash_type,
+            network: self.network,
         }
     }
 
@@ -107,36 +118,26 @@ impl Address {
     pub fn into_body(self) -> Vec<u8> {
         self.body
     }
+}
 
+impl<Codec: AddressCodec> Address<Codec> {
     /// Attempt to convert the raw address bytes to a string.
-    pub fn encode(&self) -> Result<String, cashaddr::EncodingError> {
-        match self.scheme {
-            Scheme::CashAddr => CashAddrCodec::encode(
-                &self.body,
-                self.hash_type.to_owned(),
-                self.network.to_owned(),
-            ),
-            Scheme::Base58 => Ok(Base58Codec::encode(
-                &self.body,
-                self.hash_type.to_owned(),
-                self.network.to_owned(),
-            )
-            .unwrap()), // Base58 encoding is infallible
-        }
+    pub fn encode(&self) -> Result<String, Codec::EncodingError> {
+        Codec::encode(
+            &self.body,
+            self.hash_type.to_owned(),
+            self.network.to_owned(),
+        )
     }
 
     /// Attempt to convert an address string into bytes.
-    pub fn decode(
-        addr_str: &str,
-    ) -> Result<Self, (cashaddr::DecodingError, base58::DecodingError)> {
-        CashAddrCodec::decode(addr_str).or_else(|cash_err| {
-            Base58Codec::decode(addr_str).map_err(|base58_err| (cash_err, base58_err))
-        })
+    pub fn decode(addr_str: &str) -> Result<Self, Codec::DecodingError> {
+        Codec::decode(addr_str)
     }
 }
 
 /// A trait providing an interface for encoding and decoding the `Address` struct for each address scheme.
-pub trait AddressCodec {
+pub trait AddressCodec: Sized {
     type EncodingError;
     type DecodingError;
 
@@ -148,5 +149,5 @@ pub trait AddressCodec {
     ) -> Result<String, Self::EncodingError>;
 
     /// Attempt to convert the address string to bytes.
-    fn decode(s: &str) -> Result<Address, Self::DecodingError>;
+    fn decode(s: &str) -> Result<Address<Self>, Self::DecodingError>;
 }

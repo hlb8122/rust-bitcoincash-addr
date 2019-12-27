@@ -1,5 +1,7 @@
 pub mod errors;
 
+use std::marker::PhantomData;
+
 use super::*;
 pub use errors::{DecodingError, EncodingError};
 
@@ -180,7 +182,7 @@ impl AddressCodec for CashAddrCodec {
         Ok(cashaddr)
     }
 
-    fn decode(addr_str: &str) -> Result<Address, Self::DecodingError> {
+    fn decode(addr_str: &str) -> Result<Address<Self>, Self::DecodingError> {
         // Delimit and extract prefix
         let parts: Vec<&str> = addr_str.split(':').collect();
         if parts.len() != 2 {
@@ -265,7 +267,7 @@ impl AddressCodec for CashAddrCodec {
         };
 
         Ok(Address {
-            scheme: Scheme::CashAddr,
+            scheme: PhantomData::default(),
             body: body.to_vec(),
             hash_type,
             network,

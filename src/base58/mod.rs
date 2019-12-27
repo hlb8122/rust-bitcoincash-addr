@@ -1,6 +1,8 @@
 // https://github.com/rust-bitcoin/rust-bitcoin/blob/master/src/util/address.rs
 pub mod errors;
 
+use std::marker::PhantomData;
+
 use bitcoin_hashes::{sha256d::Hash as Sha256d, Hash};
 
 use crate::*;
@@ -131,7 +133,7 @@ impl AddressCodec for Base58Codec {
         Ok(to_base58_str(&body))
     }
 
-    fn decode(addr_str: &str) -> Result<Address, Self::DecodingError> {
+    fn decode(addr_str: &str) -> Result<Address<Self>, Self::DecodingError> {
         // Convert from base58
         let raw = from_base58_str(addr_str)?;
         let length = raw.len();
@@ -163,7 +165,7 @@ impl AddressCodec for Base58Codec {
         // Extract hash160 address and return
         let body = payload[1..].to_vec();
         Ok(Address {
-            scheme: Scheme::Base58,
+            scheme: PhantomData::default(),
             body,
             hash_type,
             network,
