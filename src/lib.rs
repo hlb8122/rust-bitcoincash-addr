@@ -25,8 +25,8 @@
 //! ```
 //!
 
-mod base58;
-mod cashaddr;
+pub mod base58;
+pub mod cashaddr;
 
 pub use base58::Base58Codec;
 pub use cashaddr::CashAddrCodec;
