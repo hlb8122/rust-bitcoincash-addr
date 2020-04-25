@@ -32,7 +32,7 @@ pub use base58::Base58Codec;
 pub use cashaddr::CashAddrCodec;
 
 /// Bitcoin Networks.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum Network {
     /// Main network.
     Main,
@@ -43,7 +43,7 @@ pub enum Network {
 }
 
 /// Address encoding scheme.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum Scheme {
     /// Base58 encoding.
     Base58,
@@ -52,7 +52,7 @@ pub enum Scheme {
 }
 
 /// Intepretation of the Hash160 bytes.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum HashType {
     /// Public key hash
     Key,
@@ -62,7 +62,7 @@ pub enum HashType {
 
 /// Struct containing the bytes and metadata of a Bitcoin Cash address.
 /// This is yeilded during decoding or consumed during encoding.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub struct Address {
     /// Address bytes
     pub body: Vec<u8>,

@@ -1,6 +1,6 @@
 [package]
 name = "bitcoincash-addr"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Harry L. Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
