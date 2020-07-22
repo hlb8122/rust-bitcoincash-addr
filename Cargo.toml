@@ -1,6 +1,6 @@
 [package]
 name = "bitcoincash-addr"
-version = "0.5.2"
+version = "0.6.0"
 authors = ["Harry L. Barber <harrybarber@protonmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -17,7 +17,8 @@ exclude = ["/.travis.yml"]
 travis-ci = { repository = "hlb8122/rust-bitcoincash-addr" }
 
 [dependencies]
-bitcoin_hashes = "0.7.6"
+sha2 = "0.9.1"
 
 [dev-dependencies]
 hex = "0.4.2"
+ripemd160 = "0.9.1"

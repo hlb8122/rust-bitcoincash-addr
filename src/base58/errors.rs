@@ -16,14 +16,14 @@ pub enum DecodingError {
 impl fmt::Display for DecodingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            DecodingError::InvalidChar(b) => write!(f, "invalid char ({})", b),
+            DecodingError::InvalidChar(b) => write!(f, "invalid char: {}", b),
             DecodingError::ChecksumFailed { expected, actual } => write!(
                 f,
-                "invalid checksum (actual {:?} does not match expected {:?})",
+                "invalid checksum: actual {:?} does not match expected {:?}",
                 actual, expected
             ),
-            DecodingError::InvalidLength(length) => write!(f, "invalid length ({})", length),
-            DecodingError::InvalidVersion(v) => write!(f, "invalid version byte ({})", v),
+            DecodingError::InvalidLength(length) => write!(f, "invalid length: {}", length),
+            DecodingError::InvalidVersion(v) => write!(f, "invalid version byte: {}", v),
         }
     }
 }

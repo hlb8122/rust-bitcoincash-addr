@@ -1,12 +1,16 @@
 // https://github.com/rust-bitcoin/rust-bitcoin/blob/master/src/util/address.rs
 pub mod errors;
 
-use bitcoin_hashes::{sha256d::Hash as Sha256d, Hash};
+use sha2::{Digest, Sha256};
 
 use crate::*;
 pub use errors::DecodingError;
 
 const BASE58_CHARS: &[u8] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+fn sha256d(preimage: &[u8]) -> [u8; 32] {
+    Sha256::digest(&Sha256::digest(preimage)).into()
+}
 
 #[rustfmt::skip]
 const BASE58_DIGITS: [Option<u8>; 128] = [
@@ -102,11 +106,11 @@ fn to_base58_str(data: &[u8]) -> String {
 }
 
 /// Codec allowing the encoding and decoding of Base58 addresses.
+#[derive(Debug)]
 pub struct Base58Codec;
 
-impl AddressCodec for Base58Codec {
-    type EncodingError = ();
-    type DecodingError = DecodingError;
+impl AddressEncoder for Base58Codec {
+    type EncodingError = std::convert::Infallible;
 
     fn encode(
         raw: &[u8],
@@ -126,10 +130,14 @@ impl AddressCodec for Base58Codec {
         body.push(addr_type_byte);
         body.extend(raw);
 
-        let checksum = Sha256d::hash(&body);
+        let checksum = sha256d(&body);
         body.extend(&checksum[0..4]);
         Ok(to_base58_str(&body))
     }
+}
+
+impl AddressDecoder for Base58Codec {
+    type DecodingError = DecodingError;
 
     fn decode(addr_str: &str) -> Result<Address, Self::DecodingError> {
         // Convert from base58
@@ -152,7 +160,7 @@ impl AddressCodec for Base58Codec {
         // Verify checksum
         let payload = &raw[0..raw.len() - 4];
         let checksum_actual = &raw[raw.len() - 4..];
-        let checksum_expected = &Sha256d::hash(payload)[0..4];
+        let checksum_expected = &sha256d(payload)[0..4];
         if checksum_expected != checksum_actual {
             return Err(DecodingError::ChecksumFailed {
                 expected: checksum_expected.to_vec(),
@@ -163,7 +171,6 @@ impl AddressCodec for Base58Codec {
         // Extract hash160 address and return
         let body = payload[1..].to_vec();
         Ok(Address {
-            scheme: Scheme::Base58,
             body,
             hash_type,
             network,
@@ -174,13 +181,17 @@ impl AddressCodec for Base58Codec {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_hashes::hash160::Hash as Hash160;
     use hex;
+    use ripemd160::Ripemd160;
+
+    fn hash160(preimage: &[u8]) -> [u8; 20] {
+        Ripemd160::digest(&Sha256::digest(preimage)).into()
+    }
 
     #[test]
     fn to_legacyaddr() {
         let pubkey_hex = "04005937fd439b3c19014d5f328df8c7ed514eaaf41c1980b8aeab461dffb23fbf3317e42395db24a52ce9fc947d9c22f54dc3217c8b11dfc7a09c59e0dca591d3";
-        let pubkeyhash = Hash160::hash(&hex::decode(pubkey_hex).unwrap()).to_vec();
+        let pubkeyhash = hash160(&hex::decode(pubkey_hex).unwrap()).to_vec();
         let legacyaddr = Base58Codec::encode(&pubkeyhash, HashType::Key, Network::Main).unwrap();
         assert!(legacyaddr == "1NM2HFXin4cEQRBLjkNZAS98qLX9JKzjKn");
     }

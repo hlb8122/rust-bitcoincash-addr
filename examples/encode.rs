@@ -1,4 +1,4 @@
-use bitcoincash_addr::Address;
+use bitcoincash_addr::{Address, CashAddrCodec};
 
 fn main() {
     // Raw hash160 bytes
@@ -15,7 +15,7 @@ fn main() {
     };
 
     // Encode address
-    let address_str = address.encode().unwrap();
+    let address_str = address.encode::<CashAddrCodec>().unwrap();
 
     // bitcoincash:qh3krj5607v3qlqh5c3wq3lrw3wnuxw0sp8dv0zugrrt5a3kj6ucysfz8kxwv2k53krr7n933jfsunqex2w82sl
     println!("{}", address_str);

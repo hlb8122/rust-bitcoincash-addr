@@ -116,11 +116,11 @@ fn convert_bits(data: &[u8], inbits: u8, outbits: u8, pad: bool) -> Vec<u8> {
 }
 
 /// Codec allowing the encoding and decoding of CashAddrs.
+#[derive(Debug)]
 pub struct CashAddrCodec;
 
-impl AddressCodec for CashAddrCodec {
+impl AddressEncoder for CashAddrCodec {
     type EncodingError = EncodingError;
-    type DecodingError = DecodingError;
 
     fn encode(
         raw: &[u8],
@@ -179,6 +179,10 @@ impl AddressCodec for CashAddrCodec {
         let cashaddr = [prefix, ":", &payload_str, &checksum_str].concat();
         Ok(cashaddr)
     }
+}
+
+impl AddressDecoder for CashAddrCodec {
+    type DecodingError = DecodingError;
 
     fn decode(addr_str: &str) -> Result<Address, Self::DecodingError> {
         // Delimit and extract prefix
@@ -265,7 +269,6 @@ impl AddressCodec for CashAddrCodec {
         };
 
         Ok(Address {
-            scheme: Scheme::CashAddr,
             body: body.to_vec(),
             hash_type,
             network,

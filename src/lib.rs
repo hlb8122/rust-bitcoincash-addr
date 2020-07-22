@@ -4,19 +4,18 @@
 //! encoding/decoding of Bitcoin Cash addresses.
 //!
 //! ```
-//! use bitcoincash_addr::{Address, Network, Scheme};
+//! use bitcoincash_addr::{Address, Network, AnyCodec, CashAddrCodec};
 //!
 //! fn main() {
 //!     // Decode base58 address
 //!     let legacy_addr = "1NM2HFXin4cEQRBLjkNZAS98qLX9JKzjKn";
-//!     let mut addr = Address::decode(legacy_addr).unwrap();
+//!     let mut addr = Address::decode::<AnyCodec>(legacy_addr).unwrap();
 //!
 //!     // Change the base58 address to a test network cashaddr
 //!     addr.network = Network::Test;
-//!     addr.scheme = Scheme::CashAddr;
 //!
 //!     // Encode cashaddr
-//!     let cashaddr_str = addr.encode().unwrap();
+//!     let cashaddr_str = addr.encode::<CashAddrCodec>().unwrap();
 //!
 //!     // bchtest:qr4zgpuznfg923ntyauyeh5v7333v72xhum2dsdgfh
 //!     println!("{}", cashaddr_str);
@@ -32,7 +31,7 @@ pub use base58::Base58Codec;
 pub use cashaddr::CashAddrCodec;
 
 /// Bitcoin Networks.
-#[derive(PartialEq, Eq, Clone, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum Network {
     /// Main network.
     Main,
@@ -42,17 +41,8 @@ pub enum Network {
     Regtest,
 }
 
-/// Address encoding scheme.
-#[derive(PartialEq, Eq, Clone, Debug, Hash)]
-pub enum Scheme {
-    /// Base58 encoding.
-    Base58,
-    /// CashAddr encoding.
-    CashAddr,
-}
-
 /// Intepretation of the Hash160 bytes.
-#[derive(PartialEq, Eq, Clone, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum HashType {
     /// Public key hash
     Key,
@@ -64,23 +54,20 @@ pub enum HashType {
 /// This is yeilded during decoding or consumed during encoding.
 #[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub struct Address {
-    /// Address bytes
+    /// Address body
     pub body: Vec<u8>,
-    /// Encoding scheme
-    pub scheme: Scheme,
     /// Hash type
     pub hash_type: HashType,
     /// Network
     pub network: Network,
 }
 
-/// Creates an empty `Address` struct, with the `body` bytes the empty vector,
-/// `Scheme::CashAddr`, `HashType::Key`, and `Network::Main`.
 impl Default for Address {
+    /// Creates an empty [`Address`] struct, with the `body` bytes the empty vector,
+    /// [`Scheme::CashAddr`], [`HashType::Key`], and [`Network::Main`].
     fn default() -> Self {
         Address {
-            body: vec![],
-            scheme: Scheme::CashAddr,
+            body: Vec::new(),
             hash_type: HashType::Key,
             network: Network::Main,
         }
@@ -89,10 +76,9 @@ impl Default for Address {
 
 impl Address {
     /// Create a new address.
-    pub fn new(body: Vec<u8>, scheme: Scheme, hash_type: HashType, network: Network) -> Self {
+    pub fn new(body: Vec<u8>, hash_type: HashType, network: Network) -> Self {
         Address {
             body,
-            scheme,
             hash_type,
             network,
         }
@@ -109,36 +95,19 @@ impl Address {
     }
 
     /// Attempt to convert the raw address bytes to a string.
-    pub fn encode(&self) -> Result<String, cashaddr::EncodingError> {
-        match self.scheme {
-            Scheme::CashAddr => CashAddrCodec::encode(
-                &self.body,
-                self.hash_type.to_owned(),
-                self.network.to_owned(),
-            ),
-            Scheme::Base58 => Ok(Base58Codec::encode(
-                &self.body,
-                self.hash_type.to_owned(),
-                self.network.to_owned(),
-            )
-            .unwrap()), // Base58 encoding is infallible
-        }
+    pub fn encode<C: AddressEncoder>(&self) -> Result<String, C::EncodingError> {
+        C::encode(&self.body, self.hash_type, self.network)
     }
 
     /// Attempt to convert an address string into bytes.
-    pub fn decode(
-        addr_str: &str,
-    ) -> Result<Self, (cashaddr::DecodingError, base58::DecodingError)> {
-        CashAddrCodec::decode(addr_str).or_else(|cash_err| {
-            Base58Codec::decode(addr_str).map_err(|base58_err| (cash_err, base58_err))
-        })
+    pub fn decode<C: AddressDecoder>(addr_str: &str) -> Result<Self, C::DecodingError> {
+        C::decode(addr_str)
     }
 }
 
 /// A trait providing an interface for encoding and decoding the `Address` struct for each address scheme.
-pub trait AddressCodec {
+pub trait AddressEncoder {
     type EncodingError;
-    type DecodingError;
 
     /// Attempt to convert the raw address bytes to a string.
     fn encode(
@@ -146,7 +115,23 @@ pub trait AddressCodec {
         hash_type: HashType,
         network: Network,
     ) -> Result<String, Self::EncodingError>;
+}
+
+pub trait AddressDecoder {
+    type DecodingError;
 
     /// Attempt to convert the address string to bytes.
     fn decode(s: &str) -> Result<Address, Self::DecodingError>;
+}
+
+/// Codec allowing the encoding and decoding of either Base58 addresses or CashAddrs.
+pub struct AnyCodec;
+
+impl AddressDecoder for AnyCodec {
+    type DecodingError = (cashaddr::DecodingError, base58::DecodingError);
+
+    fn decode(s: &str) -> Result<Address, Self::DecodingError> {
+        CashAddrCodec::decode(s)
+            .or_else(|cash_err| Base58Codec::decode(s).map_err(|base58_err| (cash_err, base58_err)))
+    }
 }
